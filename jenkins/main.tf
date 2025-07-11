@@ -1,17 +1,17 @@
 provider "aws" {
-  region = "eu-west-1"
-  profile = "pet-adoption"
+  region = "us-east-1"
+  # profile = "pet-adoption"
 }
 
 locals {
-  name = "jenkins"
+  name = "amj-raj-system-jenkins"
 }
 
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
   name = "${local.name}-vpc"
   cidr = "10.0.0.0/16"
-  azs            = ["eu-west-1a"]
+  azs            = ["us-east-1a"]
   public_subnets = ["10.0.1.0/24"]
   enable_nat_gateway = false
   enable_vpn_gateway = false
@@ -20,23 +20,39 @@ module "vpc" {
   }
 }
 
-data "aws_ami" "latest_rhel" {
+# data "aws_ami" "latest_rhel" {
+#   most_recent = true
+#   # Red Hat's official AWS account ID
+#   owners = ["309956199498"]
+#   filter {
+#     name   = "name"
+#     values = ["RHEL-9*-x86_64-*"]
+#   }
+#   filter {
+#     name   = "architecture"
+#     values = ["x86_64"]
+#   }
+#   filter {
+#     name   = "virtualization-type"
+#     values = ["hvm"]
+#   }
+# }
+
+data "aws_ami" "latest_ubuntu" {
   most_recent = true
-  # Red Hat's official AWS account ID
-  owners = ["309956199498"]
+  owners      = ["099720109477"] # Canonical's AWS Account
+
   filter {
     name   = "name"
-    values = ["RHEL-9*-x86_64-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
+
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
   }
 }
+
 
 #creating and attaching an IAM role with SSM permissions to the instance.
 resource "aws_iam_role" "jenkins_ssm_role" {
@@ -95,7 +111,7 @@ resource "aws_security_group" "jenkins_sg" {
 
 # Launch an EC2 instance for Jenkins
 resource "aws_instance" "jenkins" {
-  ami                         = data.aws_ami.latest_rhel.id        # AMI ID passed as a variable (e.g., RHEL)
+  ami                         = data.aws_ami.latest_ubuntu.id        # AMI ID passed as a variable (e.g., RHEL)
   instance_type               = "t2.medium"                        # Instance type (e.g., t3.medium)
   subnet_id                   = module.vpc.public_subnets[0]    # Use first available subnet
   vpc_security_group_ids      = [aws_security_group.jenkins_sg.id] # Attach security group       # Use the created key pair

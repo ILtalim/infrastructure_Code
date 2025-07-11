@@ -1,0 +1,46 @@
+{
+  "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "region": "us-east-1",
+    "vpc_id": "",
+    "subnet_id": "",
+    "instance_type": "t3.micro"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "region": "{{user `region`}}",
+      "source_ami_filter": {
+        "filters": {
+          "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
+          "virtualization-type": "hvm"
+        },
+        "most_recent": true,
+        "owners": ["099720109477"]
+      },
+      "instance_type": "{{user `instance_type`}}",
+      "vpc_id": "{{user `vpc_id`}}",
+      "subnet_id": "{{user `subnet_id`}}",
+      "associate_public_ip_address": true,
+      "ssh_username": "ubuntu",
+      "ami_name": "Custom-Docker-App-AMI-{{timestamp}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt update && sudo apt upgrade -y",
+        "sudo apt install -y docker.io docker-compose",
+        "sudo systemctl enable --now docker",
+        "sudo usermod -aG docker ubuntu",
+        "git clone https://github.com/Consultlawal/test1.git  /mnt/data/apps",
+        "cd /mnt/data/apps",
+        "docker-compose up -d"
+      ]
+    }
+  ]
+}

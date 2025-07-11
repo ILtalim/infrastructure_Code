@@ -1,81 +1,85 @@
 pipeline {
     agent any
-    tools {
-        terraform 'terraform'
+
+    environment {
+        // Define environment variables
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key') // Stored in Jenkins Credentials
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        VPC_ID                = 'vpc-0xxxxxx' // Replace with your VPC ID
+        SUBNET_ID             = 'subnet-0xxxxxx' // Public subnet where Packer builds
+        AWS_DEFAULT_REGION    = 'us-east-1'
+        AMI_NAME              = "test1-app-ami-${currentBuild.number}-${env.BUILD_ID}"
     }
-    parameters {
-        choice(name: 'action', choices: ['apply', 'destroy'], description: 'Select the action to perform')
-    }
-    triggers {
-        pollSCM('* * * * *') // Runs every minuite
-    }
-    // environment {
-    //     SLACKCHANNEL = '16th-june-ecommerce-project-using-kops-eu-team1' //MY CHANNEL ID
-    //     SLACKCREDENTIALS = credentials('slack')
-    // }
-    
+
     stages {
-        stage('IAC Scan') {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Consultlawal/test1.git '
+            }
+        }
+
+        stage('Validate Packer Template') {
+            steps {
+                sh 'packer validate packer-ami.json'
+            }
+        }
+
+        stage('Build Custom AMI') {
             steps {
                 script {
-                    // sh 'pip install pipenv'
-                    sh 'pip install checkov'
-                    def checkovStatus = sh(script: 'checkov -d . -o cli --output-file checkov-results.txt --quiet', returnStatus: true)
-                    junit allowEmptyResults: true, testResults: 'checkov-results.txt' 
+                    // Inject AWS keys into environment
+                    env.AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
+                    env.AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
+
+                    // Run Packer Build
+                    sh """
+                        cd ${WORKSPACE}
+                        packer build \\
+                          -var "aws_access_key=\${AWS_ACCESS_KEY_ID}" \\
+                          -var "aws_secret_key=\${AWS_SECRET_ACCESS_KEY}" \\
+                          -var "vpc_id=${VPC_ID}" \\
+                          -var "subnet_id=${SUBNET_ID}" \\
+                          -var "ami_name=${AMI_NAME}" \\
+                          packer-ami.json
+                    """
                 }
             }
         }
-        stage('Terraform Init') {  // Fixed spelling
-            steps {
-                sh 'terraform init'
-            }
-        }
-        stage('Terraform format') {
-            steps {
-                sh 'terraform fmt --recursive'
-            }
-        }
-        stage('Terraform validate') {
-            steps {
-                sh 'terraform validate'
-            }
-        }
-        stage('Terraform plan') {
-            steps {
-                sh 'terraform plan'
-            }
-        }
-        stage('Terraform action') {
+
+        stage('Save AMI ID (Optional)') {
             steps {
                 script {
-                    sh "terraform ${action} -auto-approve"
+                    // Save AMI ID to file or SSM Parameter Store
+                    sh """
+                        echo "Built AMI: ${AMI_NAME}"
+                        echo "ami_name = \\"${AMI_NAME}\\"" > ami.auto.tfvars
+                    """
+                }
+            }
+        }
+
+        stage('Apply Terraform (Optional)') {
+            when {
+                expression { env.TERRAFORM_DEPLOY == "true" }
+            }
+            steps {
+                script {
+                    dir("terraform") {
+                        sh 'terraform apply -auto-approve -var-file="../ami.auto.tfvars"'
+                    }
                 }
             }
         }
     }
-    // post {
-    //     always {
-    //         script {
-    //             slackSend(
-    //                 channel: SLACKCHANNEL,
-    //                 color: currentBuild.result == 'SUCCESS' ? 'good' : 'danger',
-    //                 message: "Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL}) has been completed."
-    //             )
-    //         }
-    //     }
-    //     failure {
-    //         slackSend(
-    //             channel: SLACKCHANNEL,
-    //             color: 'danger',
-    //             message: "Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' has failed. Check console output at ${env.BUILD_URL}."
-    //         )
-    //     }
-    //     success {
-    //         slackSend(
-    //             channel: SLACKCHANNEL,
-    //             color: 'good',
-    //             message: "Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' completed successfully. Check console output at ${env.BUILD_URL}."
-    //         )
-    //     }
-    // }
+
+    post {
+        success {
+            echo "✅ Custom AMI built successfully: ${AMI_NAME}"
+            slackSend channel: '#devops', color: '#6eba76', message: "✅ [Packer] AMI Built: ${AMI_NAME}"
+        }
+        failure {
+            echo "❌ Packer build failed"
+            slackSend channel: '#devops', color: '#ff0033', message: "❌ [Packer] AMI Build Failed"
+        }
+    }
 }
