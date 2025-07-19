@@ -19,16 +19,17 @@ echo "Docker Compose installed successfully."
 mkdir -p /opt/app && cd /opt/app
 # pull .env files from AWS secret manager
 aws secretsmanager get-secret-value \
-  --secret-id frontend/env.front \
+  --secret-id env/dev \
   --query SecretString \
-  --output text > .env.frontend
+  --output text > .env
 
-aws secretsmanager get-secret-value \
-  --secret-id backend/env.back \
-  --query SecretString \
-  --output text > .env.backend
+# Download docker-compose.yml from private GitHub repo (authenticated)
+curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+     -H "Accept: application/vnd.github.v3.raw" \
+     -o docker-compose.yml \
+     https://api.github.com/repos/eamanze/project-1/contents/docker-compose.yml
 
-curl -sSL https://raw.githubusercontent.com/eamanze/project-1/main/docker-compose.yml -o docker-compose.yml
+
 # Login to Docker Hub
 docker login --username eamanze --password-stdin <<EOF
 &KX#+k!M2jqhGFv
