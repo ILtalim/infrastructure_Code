@@ -5,3 +5,4 @@ terraform.*
 *.tfvars
 *.tfstate
 terraform.tfstate.backup
+amj-raj-system-dev-key.pem

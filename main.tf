@@ -182,200 +182,82 @@ resource "aws_iam_instance_profile" "prod_instance_profile" {
   role = aws_iam_role.prod_ssm_role.name
 }
 
-
-# # Launch Template Configuration for EC2 Instances
-# resource "aws_launch_template" "prod_lnch_tmpl" {
-#   name_prefix   = "${local.name}-prod_tmpl"
-#   image_id      = data.aws_ami.ubuntu.id #"ami-0abcdef123456789"   #
-#   instance_type = "t3.large"
-#   key_name      = aws_key_pair.public-key.key_name
-#   user_data = filebase64("${path.module}/docker_userdata.sh")
-#   iam_instance_profile {
-#     name = aws_iam_instance_profile.prod_instance_profile.name
-#   }
-  
-#  block_device_mappings {
-#     device_name = "/dev/xvdf"  # # Additional EBS volume
-#     ebs {
-#       volume_size = 100               # Increase root volume to 20GB
-#       volume_type = "gp3"            # gp3 is cheaper & faster than gp2
-#       delete_on_termination = true
-#     }
-#  }
-#   network_interfaces {
-#     security_groups = [aws_security_group.prod_sg.id]
-#   }
-# }
-
-# #Create an SNS Topic (for hook notifications)
-# resource "aws_sns_topic" "lifecycle_topic" {
-#   name = "${local.name}-lifecycle-topic"
-# }
-
-# # Create an IAM Role for ASG Lifecycle Hook to Use SNS
-# resource "aws_iam_role" "asg_lifecycle_role" {
-#   name = "${local.name}-asg-lifecycle-role"
-
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [{
-#       Effect = "Allow",
-#       Principal = {
-#         Service = "autoscaling.amazonaws.com"
-#       },
-#       Action = "sts:AssumeRole"
-#     }]
-#   })
-# }
-
-# resource "aws_iam_role_policy" "asg_lifecycle_policy" {
-#   name = "asg-lifecycle-policy"
-#   role = aws_iam_role.asg_lifecycle_role.id
-
-#   policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "sns:Publish",
-#           "autoscaling:CompleteLifecycleAction"
-#         ],
-#         Resource = "*"
-#       }
-#     ]
-#   })
-# }
-
-# # Create Auto Scaling Group (ASG) for Production
-# resource "aws_autoscaling_group" "prod_asg" {
-#   name                      = "${local.name}-prod-asg"
-#   max_size                  = 3
-#   min_size                  = 1
-#   desired_capacity          = 1
-#   health_check_type         = "EC2"
-#   health_check_grace_period = 300
-#   force_delete              = true
-#   launch_template {
-#     id      = aws_launch_template.prod_lnch_tmpl.id
-#     version = "$Latest"
-#   }
-#   vpc_zone_identifier = module.vpc.private_subnets
-#   target_group_arns   = [aws_lb_target_group.team1_prod_target_group.arn]
-#   tag {
-#     key                 = "Name"
-#     value               = "${local.name}-prod-asg"
-#     propagate_at_launch = true
-#   }
-# }
-
-# # Lifecycle Hook (Separate Resource)
-# resource "aws_autoscaling_lifecycle_hook" "wait_for_app_ready" {
-#   name                    = "wait-for-app-ready"
-#   autoscaling_group_name = aws_autoscaling_group.prod_asg.name
-#   lifecycle_transition    = "autoscaling:EC2_INSTANCE_LAUNCHING"
-#   heartbeat_timeout       = 7200
-#   default_result          = "CONTINUE"
-#   notification_target_arn = aws_sns_topic.lifecycle_topic.arn
-#   role_arn                = aws_iam_role.asg_lifecycle_role.arn
-# }
-
-# # Auto Scaling Policy for Dynamic Scaling
-# resource "aws_autoscaling_policy" "prod_team1_asg_policy" {
-#   autoscaling_group_name = aws_autoscaling_group.prod_asg.name
-#   name                   = "${local.name}-prod-team1-asg-policy"
-#   adjustment_type        = "ChangeInCapacity"
-#   policy_type            = "TargetTrackingScaling"
-
-#   target_tracking_configuration {
-#     predefined_metric_specification {
-#       predefined_metric_type = "ASGAverageCPUUtilization"
-#     }
-#     target_value = 50.0
-#   }
-# }
-
-#creating and attaching an IAM role with SSM permissions to the instance.
-resource "aws_iam_role" "prodec2_ssm_role" {
-  name = "${local.name}-ssm-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-#Attach the AmazonSSMManagedInstanceCore policy
-# — required for Session Manager and SSM Agent functionality.
-resource "aws_iam_role_policy_attachment" "prodec2_ssm_attachment" {
-  role       = aws_iam_role.prodec2_ssm_role.id
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-#Attaching AdministratorAccess (this grants full access to AWS resources)
-resource "aws_iam_role_policy_attachment" "prodec2-admin_access_attachment" {
-  role       = aws_iam_role.prodec2_ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
-# create instance profiles- as EC2 instances can’t assume roles directly
-resource "aws_iam_instance_profile" "prodec2_ssm_profile" {
-  name = "${local.name}-ssm-instance-profile"
-  role = aws_iam_role.prodec2_ssm_role.id
-}
-
-# Create a security group
-resource "aws_security_group" "prodec2_sg" {
-  name        = "${local.name}-prodec2_sg"
-  description = "Allow prodec2 without ssh"
-  vpc_id      = module.vpc.vpc_id # Attach to the created VPC
-  # Inbound rule for prodec2 web interface
-  ingress {
-    description = "Allow HTTP traffic to prodec2"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    security_groups  = [aws_security_group.prod_lb_sg.id] # Replace cidr_blocks # Open to the world (can restrict for security)
+# Launch Template Configuration for EC2 Instances
+resource "aws_launch_template" "prod_lnch_tmpl" {
+  name_prefix   = "${local.name}-prod-tmpl"
+  image_id      = data.aws_ami.ubuntu.id
+  instance_type = "t2.medium"
+  key_name  = aws_key_pair.public-key.key_name
+  user_data = base64encode(file("./script.sh"))
+  block_device_mappings {
+    device_name = "/dev/sda1"  # Typical root device name for Ubuntu AMIs
+    ebs {
+      volume_size = 100         # New size in GB (default is usually 8GB)
+      volume_type = "gp3"      # Recommended modern volume type
+      encrypted   = true       # Good practice to enable encryption
+    }
   }
-  # Allow all outbound traffic
-  egress {
-    description = "Allow all outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1" # All protocols
-    cidr_blocks = ["0.0.0.0/0"]
+  monitoring {
+    enabled = true
   }
-}
-
-# Launch an EC2 instance for prodec2
-resource "aws_instance" "prodec2" {
-  ami                         = data.aws_ami.ubuntu.id       # AMI ID passed as a variable (e.g., RHEL)
-  instance_type               = "t2.medium"                        # Instance type (e.g., t3.medium)
-  subnet_id                   = module.vpc.public_subnets[0]    # Use first available subnet
-  vpc_security_group_ids      = [aws_security_group.prodec2_sg.id] # Attach security group       # Use the created key pair
-  associate_public_ip_address = true                               # Required for SSH and browser access
-  iam_instance_profile        = aws_iam_instance_profile.prodec2_ssm_profile.name
-  root_block_device {
-    volume_size = 100
-    volume_type = "gp3"
-    encrypted   = true
-    delete_on_termination = true
+  iam_instance_profile {
+    name = aws_iam_instance_profile.prod_instance_profile.name
   }
-  # User data script to install prodec2 and required tools
-  user_data = templatefile("./docker_userdata.sh", {
-    region = var.region
-  })
+  network_interfaces {
+    security_groups = [aws_security_group.prod_sg.id]
+    associate_public_ip_address = true
+  }
   metadata_options {
+    http_endpoint = "enabled"
     http_tokens = "required"
   }
-  # Tag the instance for easy identification
-  tags = {
-    Name = "${local.name}-prodec2-server"
+}
+
+
+# Create Auto Scaling Group (ASG) for Production
+resource "aws_autoscaling_group" "prod_asg" {
+  name                      = "${local.name}-prod-asg"
+  max_size                  = 3
+  min_size                  = 1
+  desired_capacity          = 1
+  health_check_grace_period = 120
+  health_check_type         = "EC2"
+  force_delete              = true
+  vpc_zone_identifier = [module.vpc.private_subnets[0], module.vpc.private_subnets[1]]
+  target_group_arns   = [aws_lb_target_group.prod_target_group.arn]
+  launch_template {
+    id      = aws_launch_template.prod_lnch_tmpl.id
+    version = "$Latest"
+  }
+  instance_refresh {
+    strategy = "Rolling"  # Default (alternatives: "RollingWithAdditionalBatch")
+    preferences {
+      min_healthy_percentage = 90  # Keep 90% healthy during refresh
+      instance_warmup        = 120 # Seconds to wait for new instances
+    }
+  }
+  tag {
+    key                 = "Name"
+    value               = "${local.name}-prod-asg"
+    propagate_at_launch = true
   }
 }
+
+
+# # Auto Scaling Policy for Dynamic Scaling
+resource "aws_autoscaling_policy" "prod_asg_policy" {
+  autoscaling_group_name = aws_autoscaling_group.prod_asg.name
+  name                   = "${local.name}-prod-team1-asg-policy"
+  adjustment_type        = "ChangeInCapacity"
+  policy_type            = "TargetTrackingScaling"
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+    target_value = 70.0
+  }
+}
+
 
 #creating security group for loadbalancer
 resource "aws_security_group" "prod_lb_sg" {
@@ -416,31 +298,27 @@ resource "aws_lb" "prod_lb" {
 # create target group for prod
 resource "aws_lb_target_group" "prod_target_group" {
   name        = "${local.name}-prod-tg"
-  target_type = "instance"
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
-
+  target_type = "instance"
   health_check {
-    enabled             = true
-    interval            = 30
-    path                = "/"
-    matcher             = "200" 
-    timeout             = 5
-    healthy_threshold   = 5
+    healthy_threshold   = 3
     unhealthy_threshold = 5
+    interval            = 30
+    timeout             = 5
+    path                = "/"
   }
-
-  lifecycle {
-    create_before_destroy = true
+  tags = {
+    Name = "${local.name}-prod-tg"
   }
 }
 
-resource "aws_lb_target_group_attachment" "prodec2_attachment" {
-  target_group_arn = aws_lb_target_group.prod_target_group.arn
-  target_id        = aws_instance.prodec2.id
-  port             = 3000
-}
+# resource "aws_lb_target_group_attachment" "prod_attachment" {
+#   target_group_arn = aws_lb_target_group.prod_target_group.arn
+#   target_id        = aws_instance.prod.id
+#   port             = 3000
+# }
 
 
 # create a listener on port 80 with redirect action
@@ -589,15 +467,15 @@ resource "aws_sns_topic_subscription" "email_sub_2" {
 }
 
 
-#Add ingress rule to EC2 SG to allow Lambda SG
-resource "aws_security_group_rule" "allow_lambda_to_ec2" {
-  type                     = "ingress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.prodec2_sg.id
-  source_security_group_id = aws_security_group.lambda_sg.id
-}
+# #Add ingress rule to EC2 SG to allow Lambda SG
+# resource "aws_security_group_rule" "allow_lambda_to_ec2" {
+#   type                     = "ingress"
+#   from_port                = 8000
+#   to_port                  = 8000
+#   protocol                 = "tcp"
+#   security_group_id        = aws_security_group.prodec2_sg.id
+#   source_security_group_id = aws_security_group.lambda_sg.id
+# }
 
 resource "aws_iam_role" "lambda_exec_role" {
   name = "amj-rag-system-dev-lambda-role"
@@ -716,3 +594,28 @@ resource "aws_s3_bucket_notification" "upload_trigger" {
 
   depends_on = [aws_lambda_permission.allow_s3]
 }
+
+resource "aws_secretsmanager_secret" "env_dev" {
+  name        = "env/dev"
+  description = "Dev environment variables"
+  recovery_window_in_days = 7  # Optional: Set recovery window for secret deletion
+
+  lifecycle {
+    prevent_destroy = false  # Set to 'true' for production if you want to block deletion
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "env_dev" {
+  secret_id     = aws_secretsmanager_secret.env_dev.id
+  secret_string = var.env_dev  # Reads local .env file
+}
+
+output "env_dev_secret_arn" {
+  value     = aws_secretsmanager_secret.env_dev.arn
+  sensitive = true
+}
+
+variable "env_dev" {
+  type = string
+}
+
