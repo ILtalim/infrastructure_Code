@@ -45,6 +45,25 @@ jobs:
       - name: Terraform Plan
         run: terraform plan
 
+      - name: Cancel deletion for Secrets Manager secrets
+        run: |
+          # Cancel deletion for env/dev secret if scheduled
+          if aws secretsmanager list-secrets --query 'SecretList[?Name==`env/dev` && DeletedDate!=null]' --output text | grep -q env/dev; then
+            echo "Canceling deletion of secret env/dev"
+            aws secretsmanager cancel-secret-deletion --secret-id env/dev
+          else
+            echo "Secret env/dev not scheduled for deletion"
+          fi
+
+          # Cancel deletion for lambda/cdn/private_key2025 secret if scheduled
+          if aws secretsmanager list-secrets --query 'SecretList[?Name==`lambda/cdn/private_key2025` && DeletedDate!=null]' --output text | grep -q lambda/cdn/private_key2025; then
+            echo "Canceling deletion of secret lambda/cdn/private_key2025"
+            aws secretsmanager cancel-secret-deletion --secret-id lambda/cdn/private_key2025
+          else
+            echo "Secret lambda/cdn/private_key2025 not scheduled for deletion"
+          fi
+
+        
       - name: Terraform Apply
         if: ${{ github.event.inputs.action == 'apply' || github.event_name == 'push' }}
         run: terraform apply -auto-approve
