@@ -6,3 +6,6 @@ terraform.*
 *.tfstate
 terraform.tfstate.backup
 amj-raj-system-dev-key.pem
+.env_dev
+.cloudfront_private_key.pem
+.cloudfront_public_key.pem
