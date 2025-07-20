@@ -15,7 +15,7 @@ provider "aws" {
 }
 
 locals {
-  name        = "amj-raj-system-dev11"
+  name        = "amj-raj-system-dev"
   domain_name = "ailawal.ca"
 }
 
