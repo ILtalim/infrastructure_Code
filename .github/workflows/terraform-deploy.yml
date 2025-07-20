@@ -45,6 +45,13 @@ jobs:
       - name: Terraform Plan
         run: terraform plan
 
+      - name: Terraform Import - env/dev
+        run: terraform import aws_secretsmanager_secret.env_dev env/dev || true
+      
+      - name: Terraform Import - cloudfront_private_key
+        run: terraform import aws_secretsmanager_secret.cloudfront_private_key lambda/cdn/private_key2025 || true
+
+
       - name: Cancel deletion for Secrets Manager secrets
         run: |
           # Cancel deletion for env/dev secret if scheduled
