@@ -798,7 +798,8 @@ resource "aws_secretsmanager_secret" "env_dev" {
   recovery_window_in_days = 7 # Optional: Set recovery window for secret deletion
 
   lifecycle {
-    prevent_destroy = false # Set to 'true' for production if you want to block deletion
+    prevent_destroy = true
+    ignore_changes  = all
   }
 }
 
