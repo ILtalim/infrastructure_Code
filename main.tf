@@ -1,3 +1,14 @@
+terraform {
+  backend "s3" {
+    bucket         = "amjrag-tf-state-dev"
+    key            = "env/dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "amjrag-tf-locks"
+    encrypt        = true
+  }
+}
+
+
 provider "aws" {
   region = "us-east-1"
   # profile = "default"
