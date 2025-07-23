@@ -439,27 +439,24 @@ data "archive_file" "lambda_zip" {
 # S3 Bucket Configuration
 resource "aws_s3_bucket" "main_bucket" {
   bucket = "${local.name}-main-bucket"
-  
-    # Enable versioning for recovery protection
-    versioning {
-      enabled = true
-    }
-  
-    # Enable server-side encryption by default
-    server_side_encryption_configuration {
-      rule {
-        apply_server_side_encryption_by_default {
-          sse_algorithm = "AES256"
-        }
-      }
-    }
-     tags = {
+
+  tags = {
     Name        = "${local.name}-main-bucket"
     Environment = "dev"
   }
 
   lifecycle {
     prevent_destroy = false # Set to true in production
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "main_bucket" {
+  bucket = aws_s3_bucket.main_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
   }
 }
 
@@ -486,13 +483,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "main_bucket" {
   bucket = aws_s3_bucket.main_bucket.id
 
   rule {
-    id     = "auto-delete-incomplete"
-    status = "Enabled"
+  id     = "expire_old_objects"
+  status = "Enabled"
 
-    abort_incomplete_multipart_upload {
-      days_after_initiation = 7
-    }
+  filter {}  # This means apply to all objects
+
+  expiration {
+    days = 30
   }
+}
 
   # Add lifecycle rule for old versions if needed
   # rule {
@@ -512,7 +511,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main_bucket" {
 
 
 
-resource "aws_s3_bucket_object" "lambda_zip" {
+resource "aws_s3_object" "lambda_zip" {
   bucket = aws_s3_bucket.main_bucket.id
   key    = "lambda/upload_handler.zip"
   source = data.archive_file.lambda_zip.output_path
@@ -1145,9 +1144,20 @@ resource "aws_iam_role_policy_attachment" "cognito_access" {
 }
 
 resource "aws_iam_policy" "cognito_access" {
-  name        = "${local.name}-cognito-access"
-  description = "Access to Cognito user pool"
-  policy      = file("${path.module}/cognito-access-policy.json")
+  name   = "cognito-access-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:ListUsers"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # resource "aws_security_group" "lambda_sg" {
