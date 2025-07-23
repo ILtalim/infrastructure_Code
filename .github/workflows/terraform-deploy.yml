@@ -70,7 +70,29 @@ jobs:
             echo "Secret lambda/cdn/private_key2025 not scheduled for deletion"
           fi
 
-        
+      - name: Render .env.dev from template
+        run: |
+          echo "Exporting GitHub secrets as environment variables"
+          export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          export AWS_REGION="${{ secrets.AWS_REGION }}"
+          export DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
+          export DOCKER_PASSWORD="${{ secrets.DOCKER_PASSWORD }}"
+          export AWS_API_GATEWAY_REST_API_ID="${{ secrets.AWS_API_GATEWAY_REST_API_ID }}"
+          export AWS_API_GATEWAY_STAGE_NAME="${{ secrets.AWS_API_GATEWAY_STAGE_NAME }}"
+          export AWS_STORAGE_BUCKET_NAME="${{ secrets.AWS_STORAGE_BUCKET_NAME }}"
+    
+          echo "Rendering .env.dev..."
+          envsubst < .env.dev.tpl > .env.dev
+
+
+      - name: Upload .env.dev to AWS Secrets Manager
+        run: |
+          echo "Uploading rendered .env.dev to Secrets Manager..."
+          aws secretsmanager put-secret-value \
+            --secret-id env/dev \
+            --secret-string file://.env.dev
+          
       - name: Terraform Apply
         if: ${{ github.event.inputs.action == 'apply' || github.event_name == 'push' }}
         run: terraform apply -auto-approve

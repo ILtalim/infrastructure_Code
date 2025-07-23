@@ -282,6 +282,13 @@ resource "aws_security_group" "prod_lb_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+    description = "http access"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -1132,6 +1139,16 @@ resource "aws_api_gateway_stage" "stage" {
   stage_name    = "dev"
 }
 
+resource "aws_iam_role_policy_attachment" "cognito_access" {
+  role       = aws_iam_role.prod_ssm_role.name
+  policy_arn = aws_iam_policy.cognito_access.arn
+}
+
+resource "aws_iam_policy" "cognito_access" {
+  name        = "${local.name}-cognito-access"
+  description = "Access to Cognito user pool"
+  policy      = file("${path.module}/cognito-access-policy.json")
+}
 
 # resource "aws_security_group" "lambda_sg" {
 #   name        = "${local.name}-lambda-sg"
