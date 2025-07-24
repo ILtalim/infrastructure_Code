@@ -42,8 +42,7 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan
+      
 
       # - name: Terraform Import - env/dev
       #   run: terraform import aws_secretsmanager_secret.env_dev env/dev || true
@@ -107,6 +106,9 @@ jobs:
       #       --secret-id env/dev \
       #       --secret-string file://.env.dev
           
+      - name: Terraform Plan
+        run: terraform plan
+        
       - name: Terraform Apply
         if: ${{ github.event.inputs.action == 'apply' || github.event_name == 'push' }}
         run: terraform apply -auto-approve
