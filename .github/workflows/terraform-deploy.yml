@@ -75,13 +75,11 @@ jobs:
             echo "🛑 Canceling deletion of secret lambda/cdn/private_key2025"
             aws secretsmanager cancel-secret-deletion --secret-id lambda/cdn/private_key2025
             echo "⏳ Waiting for secret to become available again..."
-            sleep 60  # Give AWS time to finalize cancelation
-          else
-            echo "✅ Secret lambda/cdn/private_key2025 is not scheduled for deletion"
+            sleep 90  # Give AWS time to finalize cancelation
+        
           fi
 
-      - name: Terraform Import - cloudfront_private_key
-        run: terraform import aws_secretsmanager_secret.cloudfront_private_key lambda/cdn/private_key2025 || true
+          terraform import aws_secretsmanager_secret.cloudfront_private_key lambda/cdn/private_key2025 || true
 
       - name: Render .env.dev from template
         run: |
