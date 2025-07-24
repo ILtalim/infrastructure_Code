@@ -803,10 +803,10 @@ resource "aws_secretsmanager_secret" "env_dev" {
   description             = "Dev environment variables"
   recovery_window_in_days = 7 # Optional: Set recovery window for secret deletion
 
-#   lifecycle {
-#     prevent_destroy = true
-#     ignore_changes  = all
-#   }
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
 }
 
 # 💾 Upload the rendered template as the secret value
