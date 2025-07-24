@@ -989,11 +989,12 @@ resource "aws_secretsmanager_secret" "cloudfront_private_key" {
   description = "CloudFront private key for signed URLs"
   kms_key_id  = aws_kms_key.secrets.arn # Add if you have KMS
 
+  recovery_window_in_days = 30  # Optional, but good to have
   depends_on = [aws_kms_key.secrets]
 
-  # lifecycle {
-  #   prevent_destroy = true
-  # }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "cloudfront_private_key" {
