@@ -69,14 +69,21 @@ jobs:
       #     else
       #       echo "Secret lambda/cdn/private_key2025 not scheduled for deletion"
       #     fi
-      - name: Cancel deletion for cloudfront_private_key secret
+      - name: Cancel deletion and import secret lambda/cdn/private_key2025
         run: |
+          echo "⏳ Checking if secret is scheduled for deletion..."
           if aws secretsmanager list-secrets --query 'SecretList[?Name==`lambda/cdn/private_key2025` && DeletedDate!=null]' --output text | grep -q lambda/cdn/private_key2025; then
-            echo "Canceling deletion of secret lambda/cdn/private_key2025"
+            echo "🛑 Canceling deletion of secret lambda/cdn/private_key2025"
             aws secretsmanager cancel-secret-deletion --secret-id lambda/cdn/private_key2025
+            echo "⏳ Waiting for secret to become available again..."
+            sleep 20  # Give AWS time to finalize cancelation
           else
-            echo "Secret lambda/cdn/private_key2025 not scheduled for deletion"
+            echo "✅ Secret lambda/cdn/private_key2025 is not scheduled for deletion"
           fi
+
+          echo "📦 Importing secret to Terraform state"
+          terraform import aws_secretsmanager_secret.cloudfront_private_key lambda/cdn/private_key2025 || true
+
 
       - name: Render .env.dev from template
         run: |
