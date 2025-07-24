@@ -69,6 +69,14 @@ jobs:
       #     else
       #       echo "Secret lambda/cdn/private_key2025 not scheduled for deletion"
       #     fi
+      - name: Cancel deletion for cloudfront_private_key secret
+        run: |
+          if aws secretsmanager list-secrets --query 'SecretList[?Name==`lambda/cdn/private_key2025` && DeletedDate!=null]' --output text | grep -q lambda/cdn/private_key2025; then
+            echo "Canceling deletion of secret lambda/cdn/private_key2025"
+            aws secretsmanager cancel-secret-deletion --secret-id lambda/cdn/private_key2025
+          else
+            echo "Secret lambda/cdn/private_key2025 not scheduled for deletion"
+          fi
 
       - name: Render .env.dev from template
         run: |

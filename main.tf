@@ -788,14 +788,30 @@ resource "aws_s3_bucket_lifecycle_configuration" "upload_bucket" {
   bucket = aws_s3_bucket.main_bucket.id
 
   rule {
-    id     = "auto-delete-incomplete"
+    id     = "abort-multipart"
     status = "Enabled"
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
     }
+
+    filter {}
   }
+
+  rule {
+    id     = "expire-old-objects"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+
+    filter {}
+  }
+
+  depends_on = [aws_s3_bucket.main_bucket]
 }
+
 
 # 🔐 Define the secret resource
 resource "aws_secretsmanager_secret" "env_dev" {
