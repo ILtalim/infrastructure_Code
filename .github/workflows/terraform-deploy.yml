@@ -86,12 +86,12 @@ jobs:
           envsubst < .env.dev.tpl > .env.dev
 
 
-      - name: Upload .env.dev to AWS Secrets Manager
-        run: |
-          echo "Uploading rendered .env.dev to Secrets Manager..."
-          aws secretsmanager put-secret-value \
-            --secret-id env/dev \
-            --secret-string file://.env.dev
+      # - name: Upload .env.dev to AWS Secrets Manager
+      #   run: |
+      #     echo "Uploading rendered .env.dev to Secrets Manager..."
+      #     aws secretsmanager put-secret-value \
+      #       --secret-id env/dev \
+      #       --secret-string file://.env.dev
           
       - name: Terraform Apply
         if: ${{ github.event.inputs.action == 'apply' || github.event_name == 'push' }}
