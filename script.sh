@@ -17,7 +17,7 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 systemctl start docker
 systemctl enable docker
-usermod -aG docker ec2-user
+usermod -aG docker ubuntu
 echo "Docker installation and test completed successfully."
 # installing Docker Compose
 echo "🛠️ Installing Docker Compose..."
