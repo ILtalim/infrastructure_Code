@@ -228,9 +228,9 @@ resource "aws_launch_template" "prod_lnch_tmpl" {
 # Create Auto Scaling Group (ASG) for Production
 resource "aws_autoscaling_group" "prod_asg" {
   name                      = "${local.name}-prod-asg"
-  max_size                  = 3
-  min_size                  = 2
-  desired_capacity          = 2
+  max_size                  = 1
+  min_size                  = 1
+  desired_capacity          = 1
   health_check_grace_period = 120
   health_check_type         = "EC2"
   force_delete              = true
