@@ -106,8 +106,8 @@ resource "aws_launch_template" "bastion_lt" {
 
 resource "aws_autoscaling_group" "bastion_asg" {
   name                = "${local.name}-bastion-asg"
-  max_size            = 3
-  min_size            = 1
+  max_size            = 0
+  min_size            = 0
   vpc_zone_identifier = module.vpc.public_subnets
   launch_template {
     id      = aws_launch_template.bastion_lt.id

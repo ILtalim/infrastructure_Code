@@ -41,6 +41,6 @@ NEO4J_PASSWORD=strongpass123
 
 # Frontend environment variables
 # These variables are used in the Next.js frontend application
-NEXT_PUBLIC_COGNITO_USER_POOL_ID=your-user-pool-id # AWS Cognito User Pool ID
-NEXT_PUBLIC_COGNITO_CLIENT_ID=your-user-app-client-id # AWS Cognito App Client ID
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 # Django Backend Server
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=us-east-1_83qffpg6P    
+NEXT_PUBLIC_COGNITO_CLIENT_ID=4fr7oh7rqqlbqpki85e19k11u6  
+NEXT_PUBLIC_API_BASE_URL=https://prodtest.ailawal.ca
