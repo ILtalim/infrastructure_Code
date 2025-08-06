@@ -73,3 +73,6 @@ docker-compose pull
 docker-compose up -d
 
 echo "✅ Deployment complete!"
+
+sudo hostnamectl set-hostname prodtest
+echo "Hostname set to prodtest."
